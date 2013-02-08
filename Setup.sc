@@ -1,6 +1,6 @@
 Setup  {
 
-	var	<>rebuildOn, server, waitForBoot, <functions, <env;
+	var	<>rebuildOn, server, waitForBoot, <functions, <env, cb;
 
 	*new { arg initFunc, rebuildOn, waitForBoot=true, server=\default;
 
@@ -10,9 +10,10 @@ Setup  {
     *clearAllServerActions {
         [ServerTree, ServerBoot, ServerQuit].do({ |action|
             action.objects.copy.do({ |list|
-                list.do({ |obj|
+                list.copy.do({ |obj|
                     if (obj.isKindOf(Setup)) {
                         obj.rebuildOn = nil;
+                        obj.postln;
                         action.remove(obj);
                     }
                 })
@@ -27,6 +28,7 @@ Setup  {
             this.freeAll;
         } {
             env = ();
+            cb = ();
             env.know = true;
             ServerTree.add( this, server);
             ServerBoot.add( this, server);
@@ -34,6 +36,8 @@ Setup  {
         };
         functions = List();
         this.addFunction(f);
+
+        this.addDependant(this);
 
         {
             if (waitForBoot) {
@@ -44,6 +48,17 @@ Setup  {
             Server.perform(server).sync(c);
             this.changed(\init, 1);
         }.fork
+    }
+
+    update { arg changed, changer;
+        cb[changer].do { |x|
+            x.value(env);
+        }
+    }
+
+    on { arg changer, func;
+        cb[changer] ?? { cb[changer] = [] };
+        cb[changer] = cb[changer].add(func);
     }
 
     doOnServerTree {
