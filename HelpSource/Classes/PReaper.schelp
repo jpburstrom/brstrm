@@ -1,0 +1,47 @@
+TITLE:: PReaper
+summary:: Wrap pattern in a function sending start/stop messages to Reaper.
+categories:: Streams-Patterns-Events>Patterns
+related:: Classes/ReaperServer
+
+DESCRIPTION::
+Wraps any event pattern.
+
+
+CLASSMETHODS::
+
+METHOD:: new
+Wrap a pattern
+
+ARGUMENT:: pattern
+Any pattern
+
+ARGUMENT:: fastForward
+Seconds to fast forward into the pattern, in sync with Reaper. Can also be a Point (m@s).
+
+ARGUMENT:: offset
+Additional time offset for Reaper in seconds. Can also be a Point (m@s).
+
+ARGUMENT:: key
+ReaperServer key (very optional, see ReaperServer for explanation)
+
+returns:: a PReaper
+
+
+
+
+
+EXAMPLES::
+
+Make sure the connection to Reaper is up and running.
+
+code::
+PReaper(Pbind(\note, Pseries(1,1,8)), 2, 10).trace.play;
+PReaper(Pbind(\note, Pseries(1,1,8)), 2, 1@10).play;
+::
+
+
+also possible:
+
+code::
+Pbind(\note, Pseries(1,1,8)).reap(2, 10).play;
+::

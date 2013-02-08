@@ -1,0 +1,17 @@
+TITLE:: ReaperServer
+summary:: Singleton connection to Reaper OSC Interface
+categories:: OSC
+related:: Classes/PReaper
+
+DESCRIPTION::
+Connecting to an instance of Reaper through OSC. For now, just a wrapper to call play/stop/time from one single instance.
+
+
+EXAMPLES::
+
+ReaperServer.defaultHost;
+ReaperServer.defaultPort;
+
+ReaperServer() === ReaperServer();
+ReaperServer().server.host;
+ReaperServer().server.port;

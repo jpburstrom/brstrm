@@ -1,0 +1,124 @@
+TITLE:: Setup
+summary:: An Environment wrapper with extra persistence
+categories:: Collections>Unordered
+related:: Classes/Environment, Classes/AbstractServerAction
+
+DESCRIPTION::
+Setup is wrapping an Environment which can be rebuilt on demand. All setup functions called from new, make or use are stored (in the order they were performed) in an internal list.
+
+When calling link::#-rebuild::, the environment is cleared and the functions are again called in order. You can also set the rebuildOn variable to call rebuild on ServerActions:
+
+code::
+(
+a = Setup({ "Something".postln });
+a.rebuildOn = \tree;
+CmdPeriod.run; //If server is running you should see the printout.
+)
+::
+
+NOTE::
+You can only set new environment variables through the make and use methods:
+::
+
+code::
+a = Setup({ ~foo = 1 })
+a.foo = 2; 			// won't work
+a.make { ~foo = 2 } //works
+::
+
+CLASSMETHODS::
+
+METHOD:: new
+Create a new setup object.
+
+ARGUMENT:: initFunc
+A function declaring environment variables for the Setup environment.
+
+ARGUMENT:: rebuildOn
+A symbol deciding if and when to rebuild the Setup environment. code::(\tree | \boot | \quit)::.
+
+ARGUMENT:: server
+Which server to use for the ServerActions. See link::Classes/AbstractServerAction:: for more information.
+
+INSTANCEMETHODS::
+METHOD:: init
+Reinitialize Setup, freeing all objects.
+
+ARGUMENT:: f
+A function declaring environment variables for the Setup environment.
+
+METHOD:: use
+Like use from Environment.
+returns:: the internal Environment.
+
+METHOD:: make
+Like make from Environment.
+returns:: the internal Environment.
+
+METHOD:: functions
+Get the list of currently stored make/use functions.
+
+METHOD:: rebuild
+Rebuild the environment from previously passed functions, first freeing all objects and clearing the environment.
+
+METHOD:: reset
+Same as rebuild.
+
+METHOD:: build
+Build the environment without clearing it first. Usually it should be better to call link::#-rebuild::.
+
+METHOD:: free
+Free all objects, clear environment and remove AbstractServerActions.
+WARNING::
+After calling .free the environment can't be rebuilt.
+::
+
+METHOD:: freeAll
+Call .free on all contained objects and clear the environment. The class instance can still be reused.
+
+METHOD:: addFunction
+For internal use only.
+
+METHOD:: env
+returns:: the internal Environment.
+
+METHOD:: rebuildOn
+Get or set when to rebuild the environment. code::(\tree | \boot | \quit)::.
+
+
+EXAMPLES::
+
+code::
+//Set up our main object
+(
+q = Setup({
+"ServerTree init".postln;
+    ~var1 = \something;
+    ~var2 = {
+		"This can be called like a class method".postln;
+	~test = 2;
+	};
+	~onBoot = Setup( {"Server booted".postln }, \boot)
+}, \tree) //Rebuild on ServerTree
+)
+
+s.reboot; //Reboot to see it in action
+
+//Let's add another variable
+q.make { ~hello = Setup({ ~billy = Buffer.alloc(s, 12345) }) }
+
+q.test; //nil
+q.var2; //setting test variable
+q.test; //2
+
+q.at(\var2) //Getting the function, without calling it
+
+s.cachedBuffersDo(_.postln); //Our buffer is here
+q.freeAll; // Freeing all things inside
+s.cachedBuffersDo(_.postln); //Buffer is gone
+CmdPeriod.run; // Rebuild tree
+s.cachedBuffersDo(_.postln); //Buffer is here again
+
+q.free; // Free all things inside, stopping ServerActions
+
+::

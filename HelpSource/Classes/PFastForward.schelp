@@ -1,0 +1,67 @@
+TITLE:: PFastForward
+summary:: Fast forward patterns by time (in seconds)
+categories:: Streams-Patterns-Events>Patterns>Filter
+related:: Classes/Pfindur
+
+DESCRIPTION::
+Shorten a pattern by cueing it a number of seconds forward in time.
+It's possible this isn't that useful for patterns with small delta values (eg grains).
+
+
+CLASSMETHODS::
+
+METHOD:: new
+(describe method here)
+
+ARGUMENT:: pattern
+The pattern to fast forward
+
+ARGUMENT:: seconds
+Seconds to fast forward (shouldn't be larger than maxdur)
+
+ARGUMENT:: maxdur
+Maximum number of events to count forward. If seconds > maxevents, the pattern will become empty. 
+
+returns:: (describe returnvalue here)
+
+
+INSTANCEMETHODS::
+
+METHOD:: storeArgs
+(describe method here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: maxdur
+(describe method here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: seconds
+(describe method here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: embedInStream
+(describe method here)
+
+ARGUMENT:: event
+(describe argument here)
+
+ARGUMENT:: cleanup
+(describe argument here)
+
+returns:: (describe returnvalue here)
+
+
+EXAMPLES::
+
+code::
+(
+    var pat = Pbind(\note, Pseq((1 .. 24)));
+	Ppar( [ 
+        pat.trace(prefix: "Orig"), 
+        PFastForward(pat, 6.5).trace(prefix: "Forwarded") 
+    ]).play;
+)
+::
