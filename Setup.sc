@@ -1,6 +1,6 @@
 Setup  {
 
-	var	<>rebuildOn, server, waitForBoot, <functions, <env, cb;
+	var	<>rebuildOn, server, waitForBoot, <functions, <env, cb, rebuilding=false;
 
 	*new { arg initFunc, rebuildOn, waitForBoot=true, server=\default;
 
@@ -51,8 +51,16 @@ Setup  {
     }
 
     update { arg changed, changer;
+        var result;
         cb[changer].do { |x|
-            x.value(env);
+            result = env.use(x);
+            if (result.isKindOf(Symbol)) {
+                this.changed(result);
+            }
+        };
+        if (rebuilding and: { changer == \freeAll } ) {
+            this.build();
+            rebuilding = false;
         }
     }
 
@@ -94,27 +102,24 @@ Setup  {
     }
 
 	freeAll { arg ... args;
-        env.do { |x|
-            if (Node.allSubclasses.includes(x.class)) {
-                fork {
-                    Server.perform(server).sync;
-                    if (x.isRunning) { x.free };
+        var e = env.copy;
+        forkIfNeeded {
+            e.do { |x|
+                if (Node.allSubclasses.includes(x.class)) {
+                    if (x.isRunning) { x.free; x.waitForFree; };
+                } {
+                    x.free
                 }
-            } {
-                x.free
-            }
+            };
+            this.changed(\freeAll)
         };
         env = ();
 	}
 
     reset { this.rebuild }
     rebuild {
-        {
-            // 1.wait;
-            this.freeAll;
-            // Server.perform(server).sync(c);
-            this.build;
-        }.fork
+        rebuilding = true;
+        this.freeAll;
     }
 
     build {
@@ -141,7 +146,7 @@ Setup  {
                 s.sync(c)
             };
             protect {
-                result = function.value(saveEnvir);
+                result = function.value;
                 env.do { |child|
                     if (Node.allSubclasses.includes(child.class)) {
                         child.register
