@@ -40,6 +40,7 @@ ReaperServer {
             if (port.isNil) { port = defaultPort };
         };
         server = NetAddr(host, port);
+        CmdPeriod.add(this);
         ^this
     }
 
@@ -47,7 +48,8 @@ ReaperServer {
         ^connect(defaultHost, defaultPort)
     }
 
-    play { arg ts = 0;
+    play { arg ts;
+        ts ?? { ts = Server.default.latency };
         if (playState != 1) {
             server.sendBundle(ts, [\play]);
             playState = 1;
@@ -56,10 +58,9 @@ ReaperServer {
     }
 
     stop { arg ts = 0;
-        if (playState != 0) {
-            server.sendBundle(ts, [\stop]);
-            playState = 0;
-        }
+        //Always stop
+        server.sendBundle(ts, [\stop]);
+        playState = 0;
         ^this
     }
 
@@ -80,6 +81,10 @@ ReaperServer {
 		key = argKey;
 		instances.put(argKey, this);
 	}
+
+    doOnCmdPeriod {
+        this.stop
+    }
 }
 
 PReaper : Pattern {
