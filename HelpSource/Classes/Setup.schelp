@@ -4,7 +4,9 @@ categories:: Collections>Unordered
 related:: Classes/Environment, Classes/AbstractServerAction
 
 DESCRIPTION::
-Setup is wrapping an Environment which can be rebuilt on demand. All setup functions called from new, make or use are stored (in the order they were performed) in an internal list.
+Setup is wrapping an Environment which can be rebuilt on demand. All setup functions added through link::#-new:: or link::#-makeAdd:: are stored (in the order they were performed) in an internal list.
+
+All setup functions will be run within a routine, and Server will be synched before each call.
 
 When calling link::#-rebuild::, the environment is cleared and the functions are again called in order. You can also set the rebuildOn variable to call rebuild on ServerActions:
 
@@ -37,8 +39,11 @@ A function declaring environment variables for the Setup environment.
 ARGUMENT:: rebuildOn
 A symbol deciding if and when to rebuild the Setup environment. code::(\tree | \boot | \quit)::.
 
+ARGUMENT:: waitForBoot
+If server should be booted before creating the instance.
+
 ARGUMENT:: server
-Which server to use for the ServerActions. See link::Classes/AbstractServerAction:: for more information.
+Which server to use for the ServerActions, as a symbol.
 
 INSTANCEMETHODS::
 METHOD:: init
@@ -48,12 +53,66 @@ ARGUMENT:: f
 A function declaring environment variables for the Setup environment.
 
 METHOD:: use
-Like use from Environment.
-returns:: the internal Environment.
+Call the function within the internal environment.
+
+note::
+The returned value will always be nil, if not called from within a Routine:
+::
+code::
+a = Setup()
+a.use { 2 }.postln 				// always nil
+fork { a.use { 2 }.postln }		// works
+::
+returns:: the value of function.
 
 METHOD:: make
-Like make from Environment.
+Evaluates the function within the internal environment.
+note::
+The returned environment will only be up to date if called from within a Routine.
+::
 returns:: the internal Environment.
+
+METHOD:: makeAdd
+Evaluates the function within the internal environment, appending the function to the internal rebuild list.
+note::
+The returned environment will only be up to date if called from within a Routine.
+::
+returns:: the internal Environment.
+
+METHOD:: on
+Register a callback to run on link::#-update::. The callback is run inside the instance's internal Environment.
+
+Each callback added through link::#-on:: can also send link::Classes/Object#-changed#changed:: messages by returning any symbol. That way you can define a chain of callbacks:
+
+code::
+(
+a = Setup(rebuildOn:\tree).on(\build, {
+	"Inited".postln;
+	~test = \hello;
+	1.wait;
+	\doSomething;
+});
+
+a.on(\doSomething, {
+	currentEnvironment.postln;
+	0.5.wait;
+	~test; 		// \hello
+});
+
+a.on(\hello, {
+	Pbind(\note, Pseries(0, 2, 15), \dur, 0.1).play;
+	1.5.wait;
+	"End of chain".postln;
+})
+)
+
+CmdPeriod.run; //Runs the sequence again
+
+a.free;
+::
+
+METHOD:: update
+Each Setup instance is connected to itself as a dependant. By default, it sends out a changed message on init (code::\init::) and each rebuild (code::\build::).
 
 METHOD:: functions
 Get the list of currently stored make/use functions.
@@ -77,7 +136,7 @@ METHOD:: freeAll
 Call .free on all contained objects and clear the environment. The class instance can still be reused.
 
 METHOD:: addFunction
-For internal use only.
+Add a function to the internal rebuild list without evaluating it.
 
 METHOD:: env
 returns:: the internal Environment.
@@ -105,7 +164,7 @@ q = Setup({
 s.reboot; //Reboot to see it in action
 
 //Let's add another variable
-q.make { ~hello = Setup({ ~billy = Buffer.alloc(s, 12345) }) }
+q.makeAdd { ~hello = Setup({ ~billy = Buffer.alloc(s, 12345) }) }
 
 q.test; //nil
 q.var2; //setting test variable

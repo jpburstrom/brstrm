@@ -13,7 +13,7 @@ Setup  {
                 list.copy.do({ |obj|
                     if (obj.isKindOf(Setup)) {
                         obj.rebuildOn = nil;
-                        obj.postln;
+                        // obj.postln;
                         action.remove(obj);
                     }
                 })
@@ -133,10 +133,17 @@ Setup  {
         ^this.env
     }
 
+    makeAdd { arg function;
+        this.addFunction(function);
+        this.use(function);
+        ^this.env
+    }
+
     use { arg function;
         // temporarily replaces the currentEnvironment with this,
         // executes function, returns the result of the function
         var result, saveEnvir, c, s;
+
         s = Server.perform(server);
         saveEnvir = currentEnvironment;
         currentEnvironment = env;
@@ -213,7 +220,9 @@ Setup  {
 	}
 
     printOn { arg stream, itemsPerLine = 5;
-		stream << this.class.asString;
-        this.env.printOn(stream, itemsPerLine);
+		stream << "a " << this.class.asString;
+        if (this.env.notNil) {
+            this.env.printOn(stream, itemsPerLine);
+        }
     }
 }
