@@ -22,7 +22,7 @@ AudioEditor {
 
         if (File.exists(sf)) {
             // ("open " ++ sf ++ " -a " ++ editor).postln;
-            ("open " ++ sf ++ " -a " ++ editor).unixCmd(postOutput:false)
+            ("open \"" ++ sf ++ "\" -a \"" ++ editor ++ "\"").unixCmd(postOutput:false)
             ^true
         } {
             ^false
