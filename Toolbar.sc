@@ -51,10 +51,21 @@ Toolbar {
     }
 
     add { arg name, func, tgl=false;
-        var b, index, states;
         if (win.isNil) {
             this.makeWindow;
         };
+        name = this.prCheckName(name);
+        ^this.prAdd(name, func, tgl);
+    }
+
+    replace { arg name, func, tgl=false;
+        name = this.prCheckName(name, func);
+        this.remove(name[0]);
+        ^this.prAdd(name, func, tgl);
+
+    }
+
+    prCheckName { arg name, func;
         if (name.isArray.not or: { name.isString } ) {
             if (func.notNil) {
                 name = [name, Color.black, Color.white];
@@ -63,6 +74,12 @@ Toolbar {
             }
         };
         name[0] = name[0].asSymbol;
+        ^name
+    }
+
+    prAdd { arg name, func, tgl;
+        var b, index, states;
+        name = this.prCheckName(name);
         if (tools[name[0]].notNil) {
             ^nil
         };
@@ -89,6 +106,7 @@ Toolbar {
     }
 
 
+
     rebuild {
         win.close();
         this.makeWindow();
@@ -105,9 +123,13 @@ Toolbar {
     }
 
     remove { arg name;
-        tools[name] = nil;
-        this.rebuildButtons();
+        name = name.asSymbol;
+        if (tools[name].notNil) {
+            tools[name] = nil;
+            this.rebuildButtons();
+        }
     }
+
 
     removeAll {
         tools.clear;
