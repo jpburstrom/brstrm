@@ -1,0 +1,142 @@
+TITLE:: Toolbar
+summary:: Toolbar for buttons
+categories:: GUI
+
+DESCRIPTION::
+Creates a 50 px wide borderless toolbar on the right edge of the screen. Here you can add buttons doing any kind of actions.
+
+The class is a singleton (for now). All instance methods can be used as class methods. Don't know if that is bad style.
+
+CLASSMETHODS::
+
+METHOD:: new
+Return singleton instance
+
+INSTANCEMETHODS::
+
+METHOD:: makeWindow
+Create the toolbar, open "minimized".
+
+METHOD:: rebuild
+Rebuild gui
+
+METHOD:: minimize
+"Minimize" gui. This is different from link::Classes/View#-minimize::. Hides everything except the upper checkbox button.
+
+METHOD:: unminimize
+Show all buttons, creating a 50px wide toolbar.
+
+METHOD:: rebuildButtons
+Recreate buttons
+
+METHOD:: close
+Close window. You need to recreate the toolbar with link::#-makeWindow:: to make it open again.
+
+METHOD:: removeAll
+Remove all actions and buttons from the toolbar.
+
+METHOD:: show
+Show toolbar if previously hidden with link::#-hide::.
+
+METHOD:: hide
+Hide toolbar without destroying it.
+
+METHOD:: remove
+Remove action/button.
+
+ARGUMENT:: name
+The name of the action to remove.
+
+METHOD:: add
+Add action/button. If code::func:: is nil, a label is created instead of a button.
+
+ARGUMENT:: name
+The name as string/symbol, alternatively an array with code::[\name, Color, Color]::, creating a state for the button. The name must be unique. To replace a button, first use link::#-remove::.
+
+ARGUMENT:: func
+A function passed to link::Classes/QView#-action::. If code::nil::, create a label instead.
+
+ARGUMENT:: tgl
+If button should be a toggle button. In that case, two states are created, one with swapped text/bg colors.
+
+METHOD:: win
+The toolbar link::Classes/Window::.
+
+METHOD:: tools
+Current list of actions
+
+METHOD:: container
+The View containing the buttons
+
+
+EXAMPLES::
+
+This is an example on how to use toolbar.
+
+code::
+(
+var tglFunc,  cvCenterToggle, testToneFunc, reset;
+
+tglFunc = { |func|
+    var obj;
+    { arg b;
+        if (b.value == 1) {
+            obj = func.value;
+            obj.window.onClose = { b.value = 0 }
+        } {
+            obj.window.close;
+            obj = nil;
+        }
+    }
+};
+
+
+
+testToneFunc = {
+    var obj;
+    { arg b;
+        if (b.value == 1) {
+            // Controlling a synth
+            obj = Conductor.make({ arg conductor, freq, volIndB;
+                freq	.spec_(\freq);
+                volIndB	.sp(-20,-100,20);
+
+                conductor.synth_(
+                    (	instrument: \default,
+                        addAction: 1,
+                        group: 1,
+                        server: Server.default
+                    ),
+                    [freq: freq, amp: [volIndB, volIndB.dbamp], pan: -1 ]);
+
+            }).play.show;
+            obj.onClose =  { b.value = 0 }
+        } {
+            obj.close;
+        }
+    }
+};
+
+reset = {
+    Toolbar.removeAll;
+    Toolbar.add([\Reset, Color.gray(0.7), Color.gray(0.3)], reset );
+	  //Separator
+    Toolbar.add(['-•-', Color.fromHexString("ff6699"), Color.black]);
+    Toolbar.add([\Scope, Color.white, Color.gray(0.3)],
+        tglFunc.( { Stethoscope(s) }), true );
+    Toolbar.add([\FqScope, Color.white, Color.gray(0.3)],
+        tglFunc.( { FreqScope.new }), true );
+    Toolbar.add([\Meter, Color.white, Color.gray(0.3)],
+        tglFunc.( { s.meter } ) , true );
+    Toolbar.add([\Test, Color.white, Color.gray(0.3)], testToneFunc.value, true );
+
+    //Separator
+    Toolbar.add([' -•- ', Color.fromHexString("ff6699"), Color.black]);
+
+
+};
+
+reset.();
+Toolbar.unminimize
+)
+::
