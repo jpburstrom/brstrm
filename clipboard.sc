@@ -7,6 +7,16 @@
             \windows, { "Clipboard not supported".postln }
         );
     }
+
+    repaste {
+        this.ccopy;
+        Platform.case(
+            \osx, { "osascript -e 'tell application \"System Events\"' -e 'keystroke \"v\" using {command down}' -e ' end tell'".unixCmd },
+            \linux, { "Clipboard paste not supported".postln },
+            \windows, { "Clipboard not supported".postln }
+        );
+    }
+
 }
 
 

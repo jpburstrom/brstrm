@@ -47,6 +47,7 @@ Toolbar {
         .alwaysOnTop_(true)
         .layout_(VLayout(btn, container).margins_(0).spacing_(0))
         .front;
+        this.rebuildButtons();
         this.minimize();
     }
 
@@ -59,31 +60,34 @@ Toolbar {
     }
 
     replace { arg name, func, tgl=false;
+        var index, ret;
         name = this.prCheckName(name, func);
-        this.remove(name[0]);
-        ^this.prAdd(name, func, tgl);
+        index = this.remove(name[0], rebuild:false);
+        ret = this.prAdd(name, func, tgl, index);
+        this.rebuildButtons;
+        ^ret
 
     }
 
     prCheckName { arg name, func;
         if (name.isArray.not or: { name.isString } ) {
             if (func.notNil) {
-                name = [name, Color.black, Color.white];
+                name = [name, Color.white, Color.gray(0.3)];
             } {
-                name = [name, Color.white, Color.black];
+                name = [name, Color.fromHexString("ff6699"), Color.black];
             }
         };
         name[0] = name[0].asSymbol;
         ^name
     }
 
-    prAdd { arg name, func, tgl;
-        var b, index, states;
+    prAdd { arg name, func, tgl, index;
+        var b, states;
         name = this.prCheckName(name);
         if (tools[name[0]].notNil) {
             ^nil
         };
-        index = tools.size;
+        index = index ? tools.size;
         tools[name[0]] = [index, name, func, tgl];
 
         states = [name];
@@ -122,12 +126,17 @@ Toolbar {
         IdentityDictionary
     }
 
-    remove { arg name;
+    remove { arg name, rebuild=true;
+        var index;
         name = name.asSymbol;
         if (tools[name].notNil) {
+            index = tools[name][0];
             tools[name] = nil;
+        };
+        if (rebuild) {
             this.rebuildButtons();
         }
+        ^index
     }
 
 

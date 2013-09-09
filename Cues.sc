@@ -1,21 +1,131 @@
-AbstractCue {
+//CUE
+/*
+Statuses:
+-1 error
+0 stopped
+1 loading
+2 loaded
+3 playing
+4 paused
+
+a = AbstractCue()
+
+a.playAndDelta(nil, false)
+a.dur = 23
+
+a[\play].value
+
+a.play
+
+*/
+
+
+AbstractCue : Event {
+    classvar states;
     var <>cueName,
     <number,
+    <state,
+    <ev,
+    <defaultParentEvent,
+    <cleanup, <cleanupList,
     <>preWait,
     <>postWait,
     <>continueMode;
 
+    *initClass {
+        states = IdentityDictionary[
+            \stopped -> 1,
+            \loading -> 2,
+            \ready -> 4,
+            \playing -> 8,
+            \paused -> 16,
+            \error -> 128
+        ];
+    }
 
-    *new { |cueName|
-        ^super.newCopyArgs(cueName)
+    *new {
+        ^super.new.init;
+    }
+
+    init {
+        cleanup = EventStreamCleanup.new;
+        this.parent = (
+            type: \cue,
+            server: Server.default,
+            play: {
+                "hello".postln;
+            }
+        )
+    }
+
+    load {
+        //Load/Cleanup code from Pproto
+        var loader, event, ev;
+		var proto;			// temporary proto event used in allocation
+		var makeRoutine;	// routine wrapper for function that makes protoEvent
+        var protoEvent;		// protoEvent created by function
+
+
+        state = states[\loading];
+
+        loader = Routine( { this.make( this[\loader] )  }  );
+        proto = (
+            delta: 0, 						// events occur simultaneously
+            finish: { ev = currentEnvironment } 	// get copy of event object actually played
+        );
+
+        while {
+            (ev = loader.next(ev)).notNil;
+
+        } {
+            event = ev.proto_(proto).play;
+            cleanupList = cleanupList.add(ev)
+        };
+
+        //Add all functions to cleanup
+		cleanup.addFunction(event, { | flag |
+			cleanupList.do { | ev |
+				EventTypesWithCleanup.cleanup(ev, flag)
+			}
+		});
+
+        //Use this[\addToCleanup] to add extra cleanup functions
+        //
+        this.removeFromCleanup = nil;
+        cleanup.update(this);
+
+        //Fork & Sync
+        fork {
+            this[\server] !?  { this[\server].sync };
+            state = states[\ready];
+            "Done loading".postln;
+        }
+
+
     }
 
     play { |time|
-        ^SubclassResponsibilityError(this, "play", this.class).throw;
+        state = states[\playing];
+        ^super.play;
     }
 
-    isPlaying {
-        ^false
+    stop {
+        state = states[\stopped];
+        cleanupList.do { | ev | cleanup.exit(ev) };
+        cleanup.exit(this);
+        cleanupList = nil;
+    }
+
+
+
+    isStopped { ^this.prCheckState(\stopped) }
+    isLoading { ^this.prCheckState(\loading) }
+    isReady { ^this.prCheckState(\ready) }
+    isPlaying { ^this.prCheckState(\playing) }
+    isPaused { ^this.prCheckState(\paused) }
+
+    prCheckState { arg ... st;
+        ^(st.collect(states[_]).sum & state == state);
     }
 
 }

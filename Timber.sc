@@ -1,17 +1,29 @@
 Timber : List {
     classvar <>prototype;
-    var <weights, do_calc_weights=true;
+    var <weights, do_calc_weights=true, spawner, pcs;
 
     *initClass {
         prototype = (
             prob: 0.5,
-            playcount: 0
+            playcount: 0,
+            prewait: 0,
+            postwait:0
+
         );
+    }
+
+    *new { arg ... args;
+        ^super.new(*args).initpcs;
+    }
+
+    initpcs {
+        pcs = List[];
     }
 
     wchoose {
         if (do_calc_weights) {
             this.calc_weights;
+            this.changed(\weights);
         }
         ^super.wchoose(weights);
 	}
@@ -37,6 +49,7 @@ Timber : List {
                 prob_: { arg ev, a;
                     ev.make { ~prob = a.clip(0,1) };
                     do_calc_weights = true;
+                    this.changed(\weights);
                     ev
                 }
 
@@ -52,18 +65,60 @@ Timber : List {
         this.do { arg x;  x.putAll(x.proto) };
     }
 
+    suspendAll {
+        spawner !?  { spawner.suspendAll };
+        pcs.do (_.stop);
+        pcs.clear;
+    }
 
     asPattern { |times=128, func, cleanup|
         ^Pfset(
             func,
             Pspawner({ arg sp;
                 var p;
+                spawner = sp;
                 times.do {
+                    var pc;
                     p = this.wchoose;
+                    p.cond ?? { p.cond = Condition() } ;
+                    this.changed(\current, p);
                     p.playcount = p.playcount + 1;
-                    p.at(\pre).(p, sp);
-                    sp.seq(p.thing);
-                    p.at.(\post).(p, sp);
+                    p.at(\prefunc).(p, sp);
+                    if (p.when.notNil) {
+                        p.use { p.when.fork };
+                        sp.seq((play: { p.cond.hang }, dur:0));
+                    };
+                    p.prewait.wait;
+                    if (p.at(\until).notNil) {
+                        var test = true;
+
+                        if (p.breaknote == true) {
+                            pc = PatternConductor(p.thing).play;
+                            pcs.add(pc);
+                            fork {
+                                p.cond.hang;
+                                test = false;
+                                pc.stop;
+                            };
+                            p.use { p.at(\until).fork }; //unhang p.cond
+                            while {test == true} {
+                                0.01.wait;
+                            };
+
+                        } {
+                            fork {
+                                p.cond.hang;
+                                test = false;
+                            };
+                            p.use { p.at(\until).fork }; //unhang p.cond
+                            //run p.thing until test = false
+                            sp.seq(Pif( Pfunc { test }, p.thing, nil));
+                        };
+                    } {
+                        sp.seq(p.thing);
+                    };
+                    p.postwait.wait;
+                    p.at(\postfunc).(p, sp);
                 }
             }),
             {
@@ -73,7 +128,11 @@ Timber : List {
         );
     }
 
+    //TODO: playSingle, with same args as add
+
+
 }
+
 
 //A thing with a backpack environment
 

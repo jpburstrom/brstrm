@@ -1,0 +1,27 @@
+TITLE:: Pfsym
+summary:: Get pattern from a function returning a dictionary
+categories:: Undocumented classes, Streams-Patterns-Events>Patterns>Lookup
+related:: Classes/SomeRelatedClass, Reference/SomeRelatedStuff, etc.
+
+DESCRIPTION::
+Get a pattern from a function returning a dictionary. This makes it possible to point dict to a (global) variable that can change and be redefined.
+
+EXAMPLES::
+
+code::
+
+a = (test: \before);
+b = Pbindef(\testPtn, \test, Pfsym(\test, { a })).trace.play;
+//Now change the variable
+a = (test: \after);
+b.stop;
+
+//Compare with Psym:
+
+a = (test: \before);
+b = Pbindef(\testPtn, \test, Psym(\test, a)).trace.play;
+//Now change the variable
+a = (test: \after);
+b.stop;
+
+::
