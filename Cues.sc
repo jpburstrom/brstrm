@@ -24,13 +24,11 @@ AbstractCue : Event {
     classvar states;
     var <>cueName,
     <number,
-    <state,
+    stateNum,
+    waitForPlay,
     <ev,
     <defaultParentEvent,
-    <cleanup, <cleanupList,
-    <>preWait,
-    <>postWait,
-    <>continueMode;
+    <cleanup;
 
     *initClass {
         states = IdentityDictionary[
@@ -49,74 +47,79 @@ AbstractCue : Event {
 
     init {
         cleanup = EventStreamCleanup.new;
-        this.parent = (
-            type: \cue,
+        stateNum = 1;
+        //Abstract cue sets parent, subclasses can set proto, ok?
+        parent = (
+            type: \abstractCue,
             server: Server.default,
             play: {
-                "hello".postln;
-            }
+                ~player.value;
+            },
+            player: {},
+            loader: {}
         )
     }
 
     load {
-        //Load/Cleanup code from Pproto
-        var loader, event, ev;
-		var proto;			// temporary proto event used in allocation
-		var makeRoutine;	// routine wrapper for function that makes protoEvent
-        var protoEvent;		// protoEvent created by function
-
-
-        state = states[\loading];
-
-        loader = Routine( { this.make( this[\loader] )  }  );
-        proto = (
-            delta: 0, 						// events occur simultaneously
-            finish: { ev = currentEnvironment } 	// get copy of event object actually played
-        );
-
-        while {
-            (ev = loader.next(ev)).notNil;
-
-        } {
-            event = ev.proto_(proto).play;
-            cleanupList = cleanupList.add(ev)
-        };
-
-        //Add all functions to cleanup
-		cleanup.addFunction(event, { | flag |
-			cleanupList.do { | ev |
-				EventTypesWithCleanup.cleanup(ev, flag)
-			}
-		});
-
-        //Use this[\addToCleanup] to add extra cleanup functions
-        //
-        this.removeFromCleanup = nil;
-        cleanup.update(this);
+        stateNum = states[\loading];
+        this.changed(\state);
 
         //Fork & Sync
-        fork {
-            this[\server] !?  { this[\server].sync };
-            state = states[\ready];
-            "Done loading".postln;
+        this[\server].waitForBoot {
+            this.use {
+                this[\loader].asRoutine.embedInStream;
+                this[\server] !?  { this[\server].sync };
+                this.prChangeState(\ready);
+                if (waitForPlay == true) {
+                    waitForPlay = false;
+                    this.prPlay;
+                };
+                currentEnvironment.postln;
+                "Done loading".postln;
+            }
+
         }
-
-
     }
 
+    //Play handles logic, and makes sure prPlay is called at some point
     play { |time|
-        state = states[\playing];
+        switch(stateNum,
+            states[\stopped], { waitForPlay = true; this.load; },
+            states[\loading], { waitForPlay = true; },
+            states[\ready], { this.prPlay },
+            states[\paused], { this.resume }
+        )
+    }
+
+    prPlay {
+        this.prChangeState(\playing);
         ^super.play;
     }
 
-    stop {
-        state = states[\stopped];
-        cleanupList.do { | ev | cleanup.exit(ev) };
-        cleanup.exit(this);
-        cleanupList = nil;
+    stop { |now|
+        if (this.isStopped.not) {
+            this.prStop(now);
+            cleanup.exit(this);
+            this.prChangeState(\stopped);
+        }
     }
 
+    //Implemented in subclasses
+    prStop { }
+    pause { "pause not implemented".warn; }
+    resume { "resume not implemented".warn; }
 
+    syncTo { |other|
+        other !? {
+            this[\clock] = { other.getClock }
+        }
+    }
+
+    getClock {
+        ^this[\clock].value;
+    }
+
+    state { ^states.findKeyForValue(stateNum) }
 
     isStopped { ^this.prCheckState(\stopped) }
     isLoading { ^this.prCheckState(\loading) }
@@ -124,52 +127,130 @@ AbstractCue : Event {
     isPlaying { ^this.prCheckState(\playing) }
     isPaused { ^this.prCheckState(\paused) }
 
-    prCheckState { arg ... st;
-        ^(st.collect(states[_]).sum & state == state);
+    prChangeState { arg st;
+        stateNum = states[st];
+        this.changed(\state);
     }
 
+    prCheckState { arg ... st;
+        ^(st.collect(states[_]).sum & stateNum == stateNum);
+    }
+
+    printOn { arg stream, itemsPerLine = 5;
+        var max, itemsPerLinem1, i=0;
+        itemsPerLinem1 = itemsPerLine - 1;
+        max = this.size;
+
+        stream << this.class.name << "[ ";
+        this.keysValuesDo({ arg key, val;
+            stream <<< key << " -> " << val;
+            if ((i=i+1) < max, { stream.comma.space;
+                if (i % itemsPerLine == itemsPerLinem1, { stream.nl.space.space });
+            });
+        });
+        stream << " )";
+    }
+
+    storeOn { arg stream, itemsPerLine = 5;
+        var max, itemsPerLinem1, i=0;
+        itemsPerLinem1 = itemsPerLine - 1;
+        max = this.size;
+        stream << this.class.name << "[ ";
+        this.keysValuesDo({ arg key, val;
+            stream <<< key << " -> " <<< val;
+            if ((i=i+1) < max, { stream.comma.space;
+                if (i % itemsPerLine == itemsPerLinem1, { stream.nl.space.space });
+            });
+        });
+        stream << " ]";
+    }
 }
 
-DurationCue : AbstractCue {
+SpawnerCue : AbstractCue {
+    var spawner, player, <conductor;
 
-    var <>duration,
-    <>startTime,
-    <>endTime,
-    <>loopTimes,
-    <>loopStart,
-    <>loopEnd,
-    player;
+    init {
+        var p;
+        proto = (
+            type: \spawnerCue,
+            play: {
+                p = Pspawner({ arg sp;
+                    player = conductor.eventStreamPlayers[0];
+                    player.addDependant(this);
+                    spawner = sp;
+                    sp.wait(~preWait);
+                    //Shortcut -- embed pattern automatically
+                    if (~player.isKindOf(Pattern)) {
+                        sp.seq(~player);
+                    } {
+                        { ~player.(sp) }.asRoutine.embedInStream;
+                    }
+                });
+                conductor = PatternConductor(p);
+                conductor.quant_(~quant);
+                conductor.play(this.getClock);
 
-    *new { |cueName, duration=inf|
-        ^super.new(cueName).duration_(duration).setDefaults();
-    }
-
-    setDefaults {
-        startTime = loopTimes = loopStart = 0;
-        endTime = loopEnd = inf;
-        ^this
-    }
-
-    play {
-        player.play
-        ^this
-    }
-
-    stop {
-        player.stop
-        ^this
+            }
+        )
+        ^super.init;
     }
 
     pause {
-        player.pause
-        ^this
+        switch (this.state,
+            \paused, { ^this.resume },
+            \playing, {
+                conductor !? { conductor.pause };
+                this.prChangeState(\paused);
+        });
+
+
     }
 
-    isPlaying {
-        player.isPlaying
+    resume {
+        conductor !? { conductor.resume };
+        this.prChangeState(\playing);
     }
+
+    prStop { |now|
+        var tmp, q;
+        this.use {
+            now ?? {
+                tmp = ~stopTempo;
+                q = ~stopQuant ? ~quant
+            };
+        };
+        (this.getClock ? TempoClock.default).play({
+            conductor !? { conductor.clock !? { conductor.stop(tmp) } };
+            spawner = nil;
+            player = nil;
+        }, q)
+
+    }
+
+    update { arg changed, what;
+        if (changed == player and: { what == \stopped }, {
+            //This should be ok
+            this.stop;
+            [changed, "stopped"].postln;
+        });
+        /*
+        if (changed == player and: { what == \userStopped }, {
+            //This signal would cause a race
+            [changed, "userstopped"].postln;
+        });
+        */
+    }
+
+    getClock {
+        //If conductor has a clock, get it
+        //otherwise get clock var
+        ^(conductor !? {conductor.clock}) ? this[\clock].value;
+    }
+
 }
 
+
+/*
 PatternCue : DurationCue {
 
     var <pattern,
@@ -197,10 +278,8 @@ PatternCue : DurationCue {
         player = pattern.play;
     }
 
-
-
-
 }
+*/
 
 /*
 x = PatternCue("test", Pbind(), 3)
@@ -223,4 +302,5 @@ Pseq(({ 4.0.rand } ! 4).round(0.125).sort, 1).asStream.all
 Array
 
 */
+
 
