@@ -72,6 +72,10 @@ CueGui : CueGuiBase {
                     \playing, { things[\time].play },
                     \paused, { things[\time].pause }
                 );
+            };
+
+            if (what == \name) {
+                things[\name].string = cue.name;
             }
         }
     }
@@ -110,31 +114,32 @@ CueListGui : CueGuiBase {
         view.canvas = canvas;
 
         keyActions = IdentityDictionary[
-            //Space
-            32 -> { cueList.go },
+            Char.space -> { cueList.go },
+            $V -> { cueList.play },
+            $S -> { cueList.stop },
+            $P -> { cueList.pause },
+            $L -> { cueList.load },
+            $E -> { cueList[cueList.current].document },
+            $R -> { cueList.document },
             //Esc
-            16777216 -> { cueList.reset },
-            //V
-            86 -> { cueList.play },
-            //S
-            83 -> { cueList.stop },
-            //P
-            80 -> { cueList.pause },
-            //L
-            76 -> { cueList.load },
+            QKey.escape -> { cueList.reset },
             //Down
-            16777237 -> { cueList.next },
+            QKey.down -> { cueList.next },
             //UP
-            16777235 -> { cueList.prev }
+            QKey.up -> { cueList.prev },
+            //Enter
+            QKey.return -> {
 
+            }
         ];
 
         this.keyDownAction = { arg v, c, mod, unicode, kcode, k;
+            if (k < 128) { k = k.asAscii };
             keyActions[k].value;
         };
 
         //Front if needed
-        if(parent.isNil,{
+        if(parent.isNil, {
             this.front;
         });
 

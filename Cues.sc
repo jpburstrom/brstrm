@@ -21,8 +21,8 @@ a.play
 
 
 AbstractCue : Event {
-    classvar states;
-    var <>cueName,
+    classvar states, <all;
+    var <name,
     <number,
     stateNum,
     waitForPlay,
@@ -39,11 +39,57 @@ AbstractCue : Event {
             \paused -> 16,
             \error -> 128
         ];
+        all = IdentityDictionary();
     }
 
-    *new {
-        ^super.new.init;
+    clone { |n|
+        var new;
+        n = this.class.nextName(n ? name);
+        this
+        ^this.class.newFrom([n] ++ this.asKeyValuePairs)
     }
+
+    *new { |name, size=8|
+        if (name.isNil) { name = this.nextName };
+        all[name] !? { ^all[name] };
+        ^super.new(size).name_(name).init;
+    }
+
+    *newFrom { | aCollection |
+        var newCollection;
+        newCollection = this.new(aCollection[0], aCollection.size - 1);
+        aCollection[1..].keysValuesDo({ arg k,v, i; newCollection.put(k,v) });
+        ^newCollection
+    }
+
+    *nextName { |n|
+        n.postln("before");
+        if (n.isNil) {
+            n = "Untitled Cue 1"
+        };
+        n.postln("after");
+        n = n.asSymbol;
+        while ( { all[n].notNil }, {
+            n = PathName(n.asString.trim).nextName2.asSymbol
+        });
+        ^n
+    }
+
+    name_ { |n|
+        //TODO: lookup in dict
+        n = n.asSymbol;
+        if (name.notNil) {
+            all[name] = nil;
+        };
+        all[n] = this;
+        name = n;
+        this.changed(\name);
+    }
+
+    all {
+        ^all
+    }
+
 
     init {
         cleanup = EventStreamCleanup.new;
@@ -137,25 +183,15 @@ AbstractCue : Event {
     }
 
     printOn { arg stream, itemsPerLine = 5;
-        var max, itemsPerLinem1, i=0;
-        itemsPerLinem1 = itemsPerLine - 1;
-        max = this.size;
-
-        stream << this.class.name << "[ ";
-        this.keysValuesDo({ arg key, val;
-            stream <<< key << " -> " << val;
-            if ((i=i+1) < max, { stream.comma.space;
-                if (i % itemsPerLine == itemsPerLinem1, { stream.nl.space.space });
-            });
-        });
-        stream << " )";
+        this.storeOn(stream, itemsPerLine);
     }
 
-    storeOn { arg stream, itemsPerLine = 5;
+    storeOn { arg stream, itemsPerLine = 1;
         var max, itemsPerLinem1, i=0;
         itemsPerLinem1 = itemsPerLine - 1;
         max = this.size;
-        stream << this.class.name << "[ ";
+        stream <<< this.class << "[ " <<< this.name;
+        stream.comma.space;
         this.keysValuesDo({ arg key, val;
             stream <<< key << " -> " <<< val;
             if ((i=i+1) < max, { stream.comma.space;
@@ -163,6 +199,12 @@ AbstractCue : Event {
             });
         });
         stream << " ]";
+    }
+
+    document { |name|
+        var str;
+        str = this.asCompileString;
+        ^str.newTextWindow((name ? this.class.name).asString)
     }
 }
 

@@ -110,6 +110,7 @@ CueList : List {
             }
         };
         ^this.setIndex(current + dir);
+
     }
 
     prCheckItem { |item|
@@ -122,5 +123,27 @@ CueList : List {
         ^CueListGui(this);
     }
 
+    document { |name|
+        var str;
+        str = this.asCompileString;
+        ^str.newTextWindow((name ? this.class.name).asString)
+    }
+
+    //Adding newlines to compilestring
+    storeOn { | stream |
+        if (stream.atLimit) { ^this };
+        stream << this.class.name << "[ " ;
+        this.storeItemsOn(stream);
+        stream.nl;
+        stream << "]" ;
+    }
+    storeItemsOn { | stream |
+		var addComma = false;
+		this.do { | item |
+			if (stream.atLimit) { ^this };
+			if (addComma) { stream.comma.nl.tab; } { stream.nl.tab; addComma = true };
+			item.storeOn(stream);
+		};
+	}
 
 }
