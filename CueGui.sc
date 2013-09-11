@@ -114,19 +114,19 @@ CueListGui : CueGuiBase {
         view.canvas = canvas;
 
         keyActions = IdentityDictionary[
-            Char.space -> { cueList.go },
-            $V -> { cueList.play },
-            $S -> { cueList.stop },
-            $P -> { cueList.pause },
-            $L -> { cueList.load },
-            $E -> { cueList[cueList.current].document },
-            $R -> { cueList.document },
+            Char.space -> { cueList.go; false },
+            $V -> { cueList.play; false },
+            $S -> { cueList.stop; false },
+            $P -> { cueList.pause; false },
+            $L -> { cueList.load; false },
+            $E -> { cueList[cueList.current].document; false },
+            $R -> { cueList.document; false },
             //Esc
-            QKey.escape -> { cueList.reset },
+            QKey.escape -> { cueList.reset; false },
             //Down
-            QKey.down -> { cueList.next },
+            QKey.down -> { cueList.next; false },
             //UP
-            QKey.up -> { cueList.prev },
+            QKey.up -> { cueList.prev; false },
             //Enter
             QKey.return -> {
 
@@ -134,8 +134,17 @@ CueListGui : CueGuiBase {
         ];
 
         this.keyDownAction = { arg v, c, mod, unicode, kcode, k;
+            var current;
             if (k < 128) { k = k.asAscii };
-            keyActions[k].value;
+            //Pass key to cue itself,
+            //Using a ~keyActions dictionary in its environment
+            if (keyActions[k].value != false) {
+                current = cueList[cueList.current];
+                if (current.notNil) {
+                    current[\keyActions] !? { current[\keyActions][k].value};
+                }
+
+            }
         };
 
         //Front if needed
