@@ -17,7 +17,7 @@ Toolbar {
     }
 
     init {
-        b = Window.screenBounds;
+        b = Window.availableBounds;
         w = 50;
         h = b.height;
         tools = IdentityDictionary[];
@@ -42,7 +42,7 @@ Toolbar {
             }).maxSize_(22@22).value_(1);
         ).margins_(0).spacing_(0)).background_(Color.gray);
         container = View().layout_(VLayout(nil).margins_(0).spacing_(0));
-        win = Window("Toolbar", Rect(b.width - w, b.height - h, w, h), false, false)
+        win = Window("Toolbar", Rect(b.width + b.left - w, b.height - h, w, h), false, false)
         .background_(Color.fromHexString("111111"))
         .alwaysOnTop_(true)
         .layout_(VLayout(btn, container).margins_(0).spacing_(0))
