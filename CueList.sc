@@ -118,5 +118,9 @@ CueList : List {
         ^test
     }
 
+    gui {
+        ^CueListGui(this);
+    }
+
 
 }

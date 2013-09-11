@@ -131,7 +131,12 @@ CueListGui : CueGuiBase {
 
         this.keyDownAction = { arg v, c, mod, unicode, kcode, k;
             keyActions[k].value;
-        }
+        };
+
+        //Front if needed
+        if(parent.isNil,{
+            this.front;
+        });
 
     }
 
