@@ -63,11 +63,9 @@ AbstractCue : Event {
     }
 
     *nextName { |n|
-        n.postln("before");
         if (n.isNil) {
             n = "Untitled Cue 1"
         };
-        n.postln("after");
         n = n.asSymbol;
         while ( { all[n].notNil }, {
             n = PathName(n.asString.trim).nextName2.asSymbol
