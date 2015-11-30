@@ -14,7 +14,7 @@ TimeLabel : SCViewHolder {
             loop {
                 waitTime = AppClock.seconds;
                 i = i + 1;
-                view.string = this.secondsToString(i);
+                this.value_(i);
                 1.wait;
             }
         }, AppClock);
@@ -44,11 +44,21 @@ TimeLabel : SCViewHolder {
 
     }
 
+    value_ { arg s;
+        view.string = this.secondsToString(s);
+    }
+
     secondsToString { arg s;
         var decimal, minutes, seconds;
+        if (s == inf) {
+            ^"∞";
+        };
+        if (s == nil) {
+            ^"--:--:--";
+        };
 		decimal = s.asInteger;
 		minutes = (decimal.div(60) % 60).asString.padLeft(2, "0").add($:);
 		seconds = (decimal % 60).asString.padLeft(2, "0");
-		^minutes ++ seconds
+		^minutes ++ seconds ++ ":00"
 	}
 }

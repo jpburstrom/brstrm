@@ -5,12 +5,6 @@ CueList : List {
         ^super.new(size).init;
     }
 
-    *newFrom { arg aCollection;
-        var newCollection = this.new(aCollection.size);
-		aCollection.do {| item | newCollection.add(item) };
-        ^newCollection;
-
-    }
 
     init {
         current = -1;
@@ -26,19 +20,25 @@ CueList : List {
 	foldPut { arg i, item; i = i.asInteger.fold(0, this.size - 1); this.put(i, item) }
 
 	add { arg item;
-        if (this.prCheckItem(item)) {
+        var test;
+        #test, item = this.prCheckItem(item);
+        if (test) {
             array = array.add(item);
             this.changed(\items)
         }
     }
 	addFirst { arg item;
-        if (this.prCheckItem(item)) {
+        var test;
+        #test, item = this.prCheckItem(item);
+        if (test) {
             array = array.addFirst(item);
             this.changed(\items)
         }
     }
     insert { arg index, item;
-        if (this.prCheckItem(item)) {
+        var test;
+        #test, item = this.prCheckItem(item);
+        if (test) {
             array = array.insert(index, item);
             this.changed(\items)
         }
@@ -62,17 +62,17 @@ CueList : List {
 
     load { this.performOnCue(\load) }
 
-    stop { this.performOnCue(\stop) }
+    stop { |now| this.performOnCue(\stop, now) }
 
     pause { this.performOnCue(\pause) }
 
-    stopAll { this.do(_.stop) }
+    stopAll { |now| this.do(_.stop(now)) }
 
-    performOnCue { |what|
+    performOnCue { |what, ark|
         if (this.size > 0) {
             current !? {
                 this.at(current) !? {
-                    this.at(current).perform(what);
+                    this.at(current).perform(what, ark);
                 }
             }
         }
@@ -96,7 +96,7 @@ CueList : List {
     setLast { this.setIndex(this.size - 1) }
 
     reset {
-        this.stopAll;
+        this.stopAll(true);
         this.setIndex(0);
         this.load;
     }
@@ -114,9 +114,27 @@ CueList : List {
     }
 
     prCheckItem { |item|
-        var test = item.isKindOf(AbstractCue);
-        if (test == false) { "CueList needs AbstractCues".warn }
-        ^test
+        var test;
+        if (item.isKindOf(Symbol)) {
+            item = AbstractCue.all[item]; //Can be nil
+        } {
+            if (item.isKindOf(Association)) {
+                item = OneShotOtherCue.actions[item.key].perform(\new, item.value);
+            } {
+                if (item.isKindOf(Collection)) {
+                    item = GroupCue(item.join("|"), {
+                        ~cues = item.select({ arg x; this.prCheckItem(x)[0]})
+                        .collect({ arg x; this.prCheckItem(x)[1]})
+                        ;
+                    })
+                }
+            }
+        };
+        test = item.isKindOf(AbstractCue);
+        if (test == false) {
+            "CueList needs AbstractCues (not %)".format(item.asString).warn;
+        };
+        ^[test, item]
     }
 
     gui {
