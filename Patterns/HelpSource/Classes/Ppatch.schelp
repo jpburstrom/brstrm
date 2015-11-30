@@ -1,0 +1,67 @@
+TITLE:: Ppatch
+summary:: Playing Patch within a pattern
+categories:: Streams-Patterns-Events>Patterns>Filter
+related:: Classes/Patch, Classes/Pfset
+
+DESCRIPTION::
+A workaround for playing a link::Classes/Patch:: inside event patterns. code::Ppatch:: will load the patch as a SynthDef, together with link::Classes/Sample::s and other necessary resources.
+
+When finished playing, the pattern will free its resources.
+
+The code::\instr:: event type described in link::Classes/Instr:: help doesn't support all the goodies of the regular code::\note:: type, so this is a way to make your link::Classes/Instr::s play in patterns.
+
+
+CLASSMETHODS::
+
+METHOD:: new
+Create a new Ppatch.
+
+ARGUMENT:: patch
+a link::Classes/Patch::.
+
+ARGUMENT:: pattern
+any event pattern.
+
+ARGUMENT:: freeOnCleanup
+if set to code::false::, the Ppatch will not free the resources on cleanup. To free manually, see -free.
+
+returns:: a Ppatch
+
+
+INSTANCEMETHODS::
+
+METHOD:: prepareForPlay
+Prepare Patch for playing, sending synthdefs to server etc.
+
+ARGUMENT:: ev
+Pass an optional event with options: code::\server::, code::\group:: and/or code::\bus::. Right now it's only used to make sure Patch is loading onto the right server. Bus and Group are usually set within the pattern.
+
+METHOD:: embedInStream
+Will call prepareForPlay if needed.
+
+note::The server needs to be booted, otherwise Ppatch will yield nil, and spit out a warning.::
+
+METHOD:: free
+Free all resources. The same as code::this.patch.free:: internally.
+
+METHOD:: freeOnCleanup
+Get/set if Ppatch should free its resources on cleanup.
+
+METHOD:: patch
+Get/set the patch.
+
+EXAMPLES::
+
+code::
+(
+Instr("sample-help", { arg sample, gate=1, rate=1;
+        PlayBuf.ar(sample.numChannels, sample.bufnumIr, sample.bufRateScaleKr * rate) * EnvGen.kr(Env.cutoff, gate, doneAction:2);
+    }, [\sample, NoLagControlSpec(), \rate]);
+a = Sample();
+a.gui() //Load sample
+)
+//And here we go:
+x = Ppatch(Patch("sample-help", [a]), Pbind(\rate, 2.pow(Pwhite(-1.0, 1)))).play
+x.stop
+
+::
