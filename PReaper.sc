@@ -13,7 +13,7 @@ ReaperServer {
     *initClass {
 		instances = IdentityDictionary.new;
         defaultHost = "localhost";
-        defaultPort = 57121;
+        defaultPort = 9999;
 	}
 
 	*new { arg key = \default, host="localhost", port=57121;

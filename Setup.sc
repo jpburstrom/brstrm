@@ -1,6 +1,6 @@
 Setup  {
 
-	var	<>rebuildOn, server, waitForBoot, <functions, <env, cb, rebuilding=false;
+	var	<>rebuildOn, server, waitForBoot, <functions, <env, cb, rebuilding=false, <>clock;
 
 	*new { arg initFunc, rebuildOn, waitForBoot=true, server=\default;
 
@@ -47,7 +47,7 @@ Setup  {
             c = Condition();
             Server.perform(server).sync(c);
             this.changed(\init, 1);
-        }.fork
+        }.fork(clock)
     }
 
     update { arg changed, changer;
@@ -91,6 +91,13 @@ Setup  {
        functions.add(f);
     }
 
+    forkOnClock { arg func;
+        if (clock.notNil and: { thisThread.clock != clock }) {
+            func.fork(clock);
+        };
+        func.forkIfNeeded;
+    }
+
     free {
         ServerTree.remove( this, server);
         ServerBoot.remove( this, server);
@@ -103,7 +110,7 @@ Setup  {
 
 	freeAll { arg ... args;
         var e = env.copy;
-        forkIfNeeded {
+        this.forkOnClock({
             e.do { |x|
                 if (Node.allSubclasses.includes(x.class)) {
                     if (x.isRunning) { x.free; x.waitForFree; };
@@ -112,7 +119,7 @@ Setup  {
                 }
             };
             this.changed(\freeAll)
-        };
+        });
         env = ();
 	}
 
@@ -147,7 +154,7 @@ Setup  {
         s = Server.perform(server);
         saveEnvir = currentEnvironment;
         currentEnvironment = env;
-        {
+        this.forkOnClock({
             c = Condition.new;
             if (Server.allRunningServers.findMatch(s).notNil) {
                 s.sync(c)
@@ -167,7 +174,7 @@ Setup  {
 
             this.changed(\build);
 
-        }.forkIfNeeded;
+        });
         ^result
     }
 
